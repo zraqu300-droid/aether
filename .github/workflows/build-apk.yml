@@ -19,7 +19,7 @@ jobs:
       - name: 1. Checkout Code
         uses: actions/checkout@v4
 
-      # 2. تهيئة بيئة جافا المتوافقة مع أندرويد
+      # 2. تهيئة بيئة جافا المتوافقة مع أندرويد (تحديث التوزيعة لضمان الاستقرار)
       - name: 2. Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -32,35 +32,36 @@ jobs:
         with:
           node-version: '24'
 
-      # 4. تنظيف المشروع وتثبيت الاعتماديات للعبة
+      # 4. تنظيف المشروع وتثبيت الاعتماديات للعبة من الصفر
       - name: 4. Deep Clean & Install
         run: |
           rm -rf node_modules package-lock.json android ios dist
           npm install --legacy-peer-deps
           # تثبيت إضافات الاهتزاز والاشعارات الهامة للعبة
-          npm install @capacitor/haptics @capacitor/local-notifications --save --legacy-peer-deps
+          npm install @capacitor/core @capacitor/android @capacitor/haptics @capacitor/local-notifications --save --legacy-peer-deps
           npm run build
 
-      # 5. تهيئة منصة أندرويد من الصفر للعبة
-      - name: 5. Initialize Android (Fresh Start)
+      # 5. تهيئة منصة أندرويد بالكامل وتوليد ملفات النظام الأساسية
+      - name: 5. Initialize Android Platform
         run: |
           npx cap add android
           npx cap sync android
 
-      # 6. حقن ملفات الهوية والميزات وتعديل مسميات اللعبة (Aether of Impact)
+      # 6. حقن ملفات الهوية والميزات وتعديل مسميات اللعبة (بعد اكتمال بناء المجلد)
       - name: 6. Inject App Identity & Configuration
         shell: bash
         run: |
+          # تحديد مسارات الملفات بعد التأكد من توليدها بواسطة Capacitor
           STRINGS="android/app/src/main/res/values/strings.xml"
           APP_GRADLE="android/app/build.gradle"
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           
-          # تعديل اسم التطبيق ليصبح (أثير الأثر) والحزمة لـ (com.aether.impact)
+          # تعديل اسم اللعبة ليصبح (أثير الأثر) والحزمة لـ (com.aether.impact)
           sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">أثير الأثر<\/string>/' $STRINGS
           sed -i 's/namespace ".*"/namespace "com.aether.impact"/' $APP_GRADLE
           sed -i 's/applicationId ".*"/applicationId "com.aether.impact"/' $APP_GRADLE
           
-          # إضافة الأذونات اللازمة لتشغيل اللعبة والاهتزازات بنجاح
+          # إضافة الأذونات اللازمة لتشغيل اللعبة والاهتزازات في الخلفية بنجاح
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <uses-permission android:name="android.permission.VIBRATE" />' $MANIFEST
 
       # 7. توليد الأيقونات وصور البداية للتطبيق تلقائياً إذا وجدت
@@ -72,14 +73,14 @@ jobs:
           find . -name "icon-foreground.png" -exec cp {} assets/icon-foreground.png \; || true
           npx capacitor-assets generate --android || echo "No assets found, using default icons."
 
-      # 8. بناء ملفات أندرويد الثنائية (Release)
+      # 8. بناء ملفات أندرويد الثنائية (Release) مع تشغيل التجميع النظيف
       - name: 8. Build Android Binaries
         run: |
           cd android
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew assembleRelease
-          ./gradlew bundleRelease
+          ./gradlew assembleRelease --no-daemon
+          ./gradlew bundleRelease --no-daemon
 
       # 9. توقيع ملفات الـ APK والـ AAB للعبة "أثير الأثر"
       - name: 9. Sign APK & AAB
@@ -96,11 +97,10 @@ jobs:
           
           # توقيع الـ AAB النهائي للرفع على متجر جوجل بلاي
           AAB_PATH=$(find android/app/build/outputs/bundle/release/ -name "*.aab" | head -n 1)
-          jarsigner -keystore aether_release.jks -storepass "nawh_pass_2026" "$AAB_PATH" aether_alias || \
           jarsigner -keystore aether_release.jks -storepass "aether_pass_2026" "$AAB_PATH" aether_alias
           cp "$AAB_PATH" Aether-Impact-Signed.aab
 
-      # 10. نشر النسخة النهائية كـ Release مبهج للعبة على المستودع الخاص بك
+      # 10. نشر النسخة النهائية كـ Release على المستودع الخاص بك
       - name: 10. Publish Release
         uses: softprops/action-gh-release@v2
         with:
@@ -108,7 +108,7 @@ jobs:
           name: "أثير الأثر: الإصدار الإنتاجي رقم v${{ github.run_number }}"
           body: |
             مرحباً بك في عالم "أثير الأثر: رحلة المبعوث".
-            تم بناء اللعبة بنجاح وتوقيعها كإصدار إنتاجي متكامل.
+            تم بناء اللعبة بالكامل من الصفر بنجاح وتوقيعها كإصدار إنتاجي متكامل.
             
             الملفات المتاحة للتحميل في الأسفل:
             - **Aether-Impact-Signed.apk** (لتثبيت اللعبة مباشرة على هاتفك الأندرويد)
