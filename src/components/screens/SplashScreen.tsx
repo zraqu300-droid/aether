@@ -1,23 +1,21 @@
 import { motion } from 'framer-motion';
-import { useGame } from '../game/GameContext';
-import { Compass, Heart, Eye, Sprout, Sparkles } from 'lucide-react';
+import { useGame } from '../../game/GameContext';
+import { Compass } from 'lucide-react';
 
-export default function IntroScreen() {
-  const { startGame } = useGame();
+export default function SplashScreen() {
+  const { navigate } = useGame();
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-6 overflow-y-auto z-40">
+    <div className="fixed inset-0 flex items-center justify-center p-6 overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(6)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute rounded-full blur-3xl"
             style={{
-              width: 200 + i * 60,
-              height: 200 + i * 60,
+              width: 200 + i * 60, height: 200 + i * 60,
               background: i % 2 === 0 ? 'rgba(14,165,233,0.06)' : 'rgba(45,212,191,0.06)',
-              top: `${5 + i * 12}%`,
-              left: `${3 + i * 18}%`,
+              top: `${5 + i * 12}%`, left: `${3 + i * 18}%`,
             }}
             animate={{ x: [0, 40, 0], y: [0, -30, 0], opacity: [0.2, 0.5, 0.2] }}
             transition={{ duration: 10 + i * 2, repeat: Infinity, delay: i * 0.4 }}
@@ -54,33 +52,15 @@ export default function IntroScreen() {
           رحلة المبعوث
         </motion.p>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="text-sm text-aether-300/70 leading-relaxed mb-8 text-balance">
-          تُسافر في عالم ثلاثي الأبعاد جرداء.
-          تحيي الأرض بمشيك، وتزرع الأثر بقرارك.
+          عالم ثلاثي الأبعاد ينتظر إحياءك.
+          تحرّك، استكشف، وأحيِ الأرض الجرداء بقراراتك.
           لا أحد يقول لك ماذا تفعل — العالم نفسه يُجيبك.
-          انظر كيف ينمو أثرك بعد عشر سنين.
         </motion.p>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }} className="flex flex-wrap justify-center gap-2 mb-8">
-          {[
-            { icon: Heart, label: 'إحياء الأرض' },
-            { icon: Eye, label: 'عدسة الاستشراف' },
-            { icon: Compass, label: 'بوصلة اليقين' },
-            { icon: Sprout, label: 'زرع الأشجار' },
-            { icon: Sparkles, label: 'الأصداء الأرواح' },
-          ].map((f, i) => (
-            <div key={i} className="flex items-center gap-1.5 rounded-full glass-light px-3 py-1.5">
-              <f.icon className="h-3.5 w-3.5 text-impact-400" />
-              <span className="text-xs text-aether-200">{f.label}</span>
-            </div>
-          ))}
-        </motion.div>
-
         <motion.button
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1.1 }}
+          initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          onClick={startGame}
+          onClick={() => navigate('menu')}
           className="px-10 py-4 rounded-2xl bg-gradient-to-r from-impact-500 to-aether-500 font-bold text-white text-lg shadow-xl shadow-impact-500/20 hover:shadow-impact-500/40 transition-shadow"
         >
           ابدأ الرحلة
