@@ -2,9 +2,20 @@ import { motion } from 'framer-motion';
 import { useGame } from '../../game/GameContext';
 import { LEVELS } from '../../data/levelsData';
 import { ArrowRight, Lock, Star, Check } from 'lucide-react';
+import { useState } from 'react';
 
 export default function LevelSelectorScreen() {
   const { navigate, startLevel, isLevelUnlocked, levelProgress } = useGame();
+  const [pressedId, setPressedId] = useState<number | null>(null);
+
+  const handleLevelClick = (levelId: number, unlocked: boolean) => {
+    if (!unlocked) return;
+    setPressedId(levelId);
+    // Brief delay for visual feedback before transitioning
+    setTimeout(() => {
+      startLevel(levelId);
+    }, 150);
+  };
 
   return (
     <div className="fixed inset-0 flex flex-col p-4 overflow-hidden">
@@ -27,6 +38,7 @@ export default function LevelSelectorScreen() {
             const progress = levelProgress[level.id];
             const completed = progress?.completed ?? false;
             const stars = progress?.stars ?? 0;
+            const isPressed = pressedId === level.id;
 
             return (
               <motion.button
@@ -35,11 +47,12 @@ export default function LevelSelectorScreen() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, type: 'spring', stiffness: 100, damping: 15 }}
                 whileTap={unlocked ? { scale: 0.97 } : {}}
-                onClick={() => unlocked && startLevel(level.id)}
+                onClick={() => handleLevelClick(level.id, unlocked)}
                 disabled={!unlocked}
                 className={`
-                  relative glass rounded-2xl p-4 border text-right overflow-hidden
+                  relative glass rounded-2xl p-4 border text-right overflow-hidden transition-all
                   ${unlocked ? 'border-impact-400/20 hover:border-impact-400/40 cursor-pointer' : 'border-white/5 opacity-50'}
+                  ${isPressed ? 'ring-2 ring-impact-400/50 scale-95' : ''}
                 `}
               >
                 {unlocked && (

@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from 'react';
 
@@ -48,24 +49,88 @@ type GameContextType = {
 
 const GameContext = createContext<GameContextType | null>(null);
 
+const STORAGE_KEYS = {
+  unlockedLevels: 'aether_unlockedLevels',
+  currentLevel: 'aether_currentLevel',
+  levelProgress: 'aether_levelProgress',
+  settings: 'aether_settings',
+};
+
+function safeParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function initUnlockedLevels(): number[] {
+  const raw = localStorage.getItem(STORAGE_KEYS.unlockedLevels);
+  const parsed = safeParse<number[]>(raw, []);
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    const defaultValue = [1];
+    localStorage.setItem(STORAGE_KEYS.unlockedLevels, JSON.stringify(defaultValue));
+    return defaultValue;
+  }
+  return parsed;
+}
+
+function initCurrentLevel(): number {
+  const raw = localStorage.getItem(STORAGE_KEYS.currentLevel);
+  const parsed = safeParse<number>(raw, 0);
+  if (!parsed || parsed < 1) {
+    localStorage.setItem(STORAGE_KEYS.currentLevel, '1');
+    return 1;
+  }
+  return parsed;
+}
+
+function initLevelProgress(): Record<number, LevelProgress> {
+  const raw = localStorage.getItem(STORAGE_KEYS.levelProgress);
+  const parsed = safeParse<Record<number, LevelProgress>>(raw, {});
+  return parsed && typeof parsed === 'object' ? parsed : {};
+}
+
+function initSettings(): Settings {
+  const raw = localStorage.getItem(STORAGE_KEYS.settings);
+  return safeParse<Settings>(raw, { sound: true, music: true, haptics: true });
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
   const [screen, setScreen] = useState<ScreenName>('splash');
-  const [currentLevelId, setCurrentLevelId] = useState(1);
-  const [levelProgress, setLevelProgress] = useState<Record<number, LevelProgress>>({
-    1: { completed: false, stars: 0, stats: { message: 0, responsibility: 0, insight: 0 } },
-  });
-  const [settings, setSettings] = useState<Settings>({
-    sound: true,
-    music: true,
-    haptics: true,
-  });
+  const [currentLevelId, setCurrentLevelId] = useState<number>(() => initCurrentLevel());
+  const [unlockedLevels, setUnlockedLevels] = useState<number[]>(() => initUnlockedLevels());
+  const [levelProgress, setLevelProgress] = useState<Record<number, LevelProgress>>(() => initLevelProgress());
+  const [settings, setSettings] = useState<Settings>(() => initSettings());
   const [victoryStats, setVictoryStats] = useState<GameStats | null>(null);
   const [victoryStars, setVictoryStars] = useState(0);
+
+  // Persist unlocked levels
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.unlockedLevels, JSON.stringify(unlockedLevels));
+  }, [unlockedLevels]);
+
+  // Persist current level
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.currentLevel, JSON.stringify(currentLevelId));
+  }, [currentLevelId]);
+
+  // Persist level progress
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.levelProgress, JSON.stringify(levelProgress));
+  }, [levelProgress]);
+
+  // Persist settings
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
+  }, [settings]);
 
   const navigate = useCallback((s: ScreenName) => setScreen(s), []);
 
   const startLevel = useCallback((id: number) => {
     setCurrentLevelId(id);
+    localStorage.setItem(STORAGE_KEYS.currentLevel, JSON.stringify(id));
     setScreen('game');
   }, []);
 
@@ -73,9 +138,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setLevelProgress((prev) => ({
       ...prev,
       [id]: { completed: true, stars, stats },
-      // Unlock next level
-      ...(id + 1 <= 10 ? { [id + 1]: { completed: false, stars: 0, stats: { message: 0, responsibility: 0, insight: 0 } } } : {}),
     }));
+    // Unlock next level
+    setUnlockedLevels((prev) => {
+      if (prev.includes(id + 1)) return prev;
+      return [...prev, id + 1];
+    });
     setVictoryStats(stats);
     setVictoryStars(stars);
     setScreen('victory');
@@ -84,9 +152,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const isLevelUnlocked = useCallback(
     (id: number) => {
       if (id === 1) return true;
-      return levelProgress[id - 1]?.completed ?? false;
+      return unlockedLevels.includes(id);
     },
-    [levelProgress]
+    [unlockedLevels]
   );
 
   const updateSettings = useCallback((partial: Partial<Settings>) => {

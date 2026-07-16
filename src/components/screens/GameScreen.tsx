@@ -120,7 +120,7 @@ export default function GameScreen() {
     setStats((s) => ({
       ...s,
       responsibility: Math.min(100, s.responsibility + 3),
-      harmony: Math.min(100, (s as any).harmony + 2),
+      insight: Math.min(100, s.insight + 2),
     }));
   }, [settings.haptics]);
 
